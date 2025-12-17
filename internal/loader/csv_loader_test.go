@@ -1,1 +1,26 @@
 package loader
+
+import (
+	"testing"
+	"reflect"
+
+)
+
+func TestLoadCSV(t *testing.T) {
+	path := "/home/mobina-mousavi/go-practice/GoUserLoader/users.csv"
+	expected_user := []User{
+		{
+		ID : 1,
+		FirstName : "Ali",
+		LastName : "Ahmadi",
+		Email : "ali@example.com",
+		},
+	}
+
+	actual_user, err := LoadCSV(path)
+
+	if reflect.DeepEqual(expected_user, actual_user) == false || err!= nil{
+		t.Error("sth went wrong", err)
+
+	}
+}
