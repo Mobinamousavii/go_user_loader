@@ -25,9 +25,10 @@ func main(){
 	fmt.Println("file:", file)
 	fmt.Println("port:", port)
 
-	fmt.Println(loader.LoadFile(file))
+	loader.LoadFile(file)
 
-	http.HandleFunc("/users", api.GetHttpUsers)
+	userhandler := api.MakeGetHttpUers(file)
+	http.HandleFunc("/users", userhandler)
 	http.ListenAndServe(":8080", nil)
 
 
