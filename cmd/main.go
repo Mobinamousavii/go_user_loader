@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"goproject/internal/api"
 	"goproject/internal/loader"
 	"net/http"
-	"goproject/internal/api"
+	"os"
 )
 
 
@@ -25,12 +26,17 @@ func main(){
 	fmt.Println("file:", file)
 	fmt.Println("port:", port)
 
-	loader.LoadFile(file)
+	_,_,err := loader.LoadFile(file)
+	if err!= nil{
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	userhandler := api.MakeGetHttpUers(file)
+	healthhandler := api.MakeHealthUsers(file)
 	http.HandleFunc("/users", userhandler)
+	http.HandleFunc("/health",healthhandler)
 	http.ListenAndServe(":8080", nil)
-
 
 	
 }

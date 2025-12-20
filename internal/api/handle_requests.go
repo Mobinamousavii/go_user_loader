@@ -16,6 +16,10 @@ type Getusers struct{
 
 }
 
+type health struct{
+	status  string `josn:"status"`
+}
+
 
 func MakeGetHttpUers(path string) http.HandlerFunc{
 	return func (w http.ResponseWriter, r *http.Request){
@@ -30,6 +34,23 @@ func MakeGetHttpUers(path string) http.HandlerFunc{
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(Users)
+
+	}
+}
+
+
+func MakeHealthUsers(path string) http.HandlerFunc{
+	return  func(w http.ResponseWriter, r *http.Request) {
+
+	// _, _, err := loader.LoadFile(path)
+	// if err!= nil{
+	// 	http.Error(w,"sth went wrong", http.StatusBadRequest)
+	// 	return
+	// }
+
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(health{status: "ok"})
 
 	}
 }
