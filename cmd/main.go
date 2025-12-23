@@ -29,16 +29,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, _, err := loader.LoadFile(file)
+	 count, _, err := loader.LoadFile(file)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
 
-	userhandler := api.MakeGetHttpUsers(file)
-	healthhandler := api.MakeHealthUsers(file)
+	log.Printf("Loaded %d users", count)
+
+	userhandler := api.UserHandler(file)
 	http.HandleFunc("/users", userhandler)
-	http.HandleFunc("/health", healthhandler)
+	http.HandleFunc("/health", api.HealthHandler)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 
 	if err != nil {

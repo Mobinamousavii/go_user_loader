@@ -28,7 +28,7 @@ func LoadFile(path string) (int, []User, error) {
 
 	} else {
 		got := filepath.Ext(path)
-		err := fmt.Errorf("unsupported file extension for %q: got %q, expected .csv or .json",path , got)
+		err := fmt.Errorf("unsupported file extension for %q: got %q, expected .csv or .json", path, got)
 		return 0, nil, err
 	}
 
