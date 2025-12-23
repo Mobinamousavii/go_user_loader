@@ -1,35 +1,35 @@
 package loader
 
 import (
-	"errors"
-	"log"
+	"fmt"
+	"path/filepath"
 	"strings"
 )
 
 func LoadFile(path string) (int, []User, error) {
 
-	var errnotsupported = errors.New("not Supported File")
+	lowerPath := strings.ToLower(path)
 
-	if strings.HasSuffix(path, ".csv") {
+	if strings.HasSuffix(lowerPath, ".csv") {
 		users, err := LoadCSV(path)
 		if err != nil {
 			return 0, nil, err
 		}
 		count := len(users)
-		log.Printf("Loaded %b users", count)
 		return count, users, nil
 
-	} else if strings.HasSuffix(path, ".json") {
+	} else if strings.HasSuffix(lowerPath, ".json") {
 		users, err := LoadJSON(path)
 		if err != nil {
 			return 0, nil, err
 		}
 		count := len(users)
-		log.Printf("Loaded %b users", count)
 		return count, users, nil
 
 	} else {
-		return 0, nil, errnotsupported
+		got := filepath.Ext(path)
+		err := fmt.Errorf("unsupported file extension for %q: got %q, expected .csv or .json",path , got)
+		return 0, nil, err
 	}
 
 }
