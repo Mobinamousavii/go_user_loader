@@ -16,15 +16,18 @@ var (
 )
 
 func init() {
-	flag.IntVar(&port, "port", 8080, "the port usage for api")
-	flag.StringVar(&file, "file", "", "the fie of path")
+	flag.IntVar(&port, "port", 8080, "port the program listens on for incoming requests")
+	flag.StringVar(&file, "file", "", "path to users file (.csv/.json)")
 }
 func main() {
 
 	flag.Parse()
 
-	fmt.Println("file:", file)
-	fmt.Println("port:", port)
+	if file == "" {
+		fmt.Fprintln(os.Stderr, "-file is required for running the program")
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	_, _, err := loader.LoadFile(file)
 	if err != nil {
@@ -32,10 +35,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	userhandler := api.MakeGetHttpUers(file)
+	userhandler := api.MakeGetHttpUsers(file)
 	healthhandler := api.MakeHealthUsers(file)
 	http.HandleFunc("/users", userhandler)
 	http.HandleFunc("/health", healthhandler)
-	http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
 
 }
