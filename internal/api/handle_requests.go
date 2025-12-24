@@ -5,6 +5,7 @@ import (
 	"goproject/internal/loader"
 	"log"
 	"net/http"
+
 )
 
 type GetUsersResponse struct {
@@ -15,6 +16,7 @@ type GetUsersResponse struct {
 type HealthResponse struct {
 	Status string `json:"status"`
 }
+
 
 func UserHandler(path string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -34,13 +36,37 @@ func UserHandler(path string) http.HandlerFunc {
 		users := GetUsersResponse{Count: countloader, Items: itemsloader}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		err = json.NewEncoder(w).Encode(users)
+		erro := json.NewEncoder(w).Encode(users)
+		if erro != nil {
+			log.Printf("failed to write response: %v", erro)
+
+		}
+
+	}
+}
+
+
+
+
+func CacheUsersHandler(userlist []loader.User) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request){
+		if r.Method!=http.MethodGet{
+			w.Header().Set("Allow", http.MethodGet)
+			http.Error(w,"method not allowed", http.StatusMethodNotAllowed)
+			return 
+		}
+
+		users := GetUsersResponse{Count: len(userlist), Items: userlist}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		err := json.NewEncoder(w).Encode(users)
 		if err != nil {
 			log.Printf("failed to write response: %v", err)
 
 		}
 
 	}
+
 }
 
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
