@@ -1,0 +1,29 @@
+# Binaries
+/app
+*.exe
+*.out
+*.test
+
+# Go workspace
+/go.work
+/go.work.sum
+
+# Dependency directories (if any)
+vendor/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
+
+# Coverage
+coverage.out
+
+# Env files
+.env
