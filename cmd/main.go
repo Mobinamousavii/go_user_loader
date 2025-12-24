@@ -42,9 +42,9 @@ func main() {
 	userhandler := api.UserHandler(file)
 	cacheuserhandler := api.CacheUsersHandler(userlist)
 
-	http.HandleFunc("/users", userhandler)
+	http.HandleFunc("/users-nocaching", userhandler)
 	http.HandleFunc("/health", api.HealthHandler)
-	http.HandleFunc("/users-cache", cacheuserhandler)
+	http.HandleFunc("/users", cacheuserhandler)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 
 	if err != nil {
