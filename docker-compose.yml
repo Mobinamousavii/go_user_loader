@@ -2,5 +2,10 @@ version:  "3.9"
 services:
   app:
     build: .
+    image: go-user-loader:03
+
     ports:
       - "8080:8080"
+    volumes:
+      - /home/mobina-mousavi/Go_project/users.csv:/data/users.csv:ro
+    command: ["--file", "/data/users.csv"]
