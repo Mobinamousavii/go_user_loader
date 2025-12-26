@@ -29,13 +29,13 @@ func exampleUserHandler(path string)http.HandlerFunc{
 		return
 		}
 
-		countloader, itemsloader, err := loader.LoadFile(path)
+		itemsloader, _,err := loader.LoadFile(path)
 		if err != nil {
 			http.Error(w, "failed to load users", http.StatusInternalServerError)
 			return
 		}
 
-		users := GetUsersExample{Count: countloader, Items: itemsloader}
+		users := GetUsersExample{Count: len(itemsloader), Items: itemsloader}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		erro := json.NewEncoder(w).Encode(users)

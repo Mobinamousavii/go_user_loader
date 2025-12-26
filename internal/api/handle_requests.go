@@ -27,20 +27,15 @@ func UserHandler(path string) http.HandlerFunc {
 			return
 		}
 
-		countloader, itemsloader, err := loader.LoadFile(path)
+		itemsloader, _,err := loader.LoadFile(path)
 		if err != nil {
 			http.Error(w, "failed to load users", http.StatusInternalServerError)
 			return
 		}
 
-		users := GetUsersResponse{Count: countloader, Items: itemsloader}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		erro := json.NewEncoder(w).Encode(users)
-		if erro != nil {
-			log.Printf("failed to write response: %v", erro)
+		users := GetUsersResponse{Count: len(itemsloader), Items: itemsloader}
+		writeJSON(w,http.StatusOK,users)
 
-		}
 
 	}
 }
@@ -57,14 +52,7 @@ func CacheUsersHandler(userlist []loader.User) http.HandlerFunc {
 		}
 
 		users := GetUsersResponse{Count: len(userlist), Items: userlist}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		err := json.NewEncoder(w).Encode(users)
-		if err != nil {
-			log.Printf("failed to write response: %v", err)
-
-		}
-
+		writeJSON(w,http.StatusOK,users)
 	}
 
 }
@@ -77,11 +65,18 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	health := HealthResponse{Status: "ok"}
+	writeJSON(w,http.StatusOK,health)
+	
+}
+
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	err := json.NewEncoder(w).Encode(health)
+	w.WriteHeader(status)
+	err := json.NewEncoder(w).Encode(v)
 	if err != nil {
 		log.Printf("failed to write response: %v", err)
 	}
-
+	
 }
+
