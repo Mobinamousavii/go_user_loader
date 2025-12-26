@@ -43,7 +43,7 @@ func UserHandler(path string) http.HandlerFunc {
 
 
 
-func CacheUsersHandler(userlist []loader.User) http.HandlerFunc {
+func CacheUsersHandler(validuser []loader.User) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request){
 		if r.Method!=http.MethodGet{
 			w.Header().Set("Allow", http.MethodGet)
@@ -51,11 +51,27 @@ func CacheUsersHandler(userlist []loader.User) http.HandlerFunc {
 			return 
 		}
 
-		users := GetUsersResponse{Count: len(userlist), Items: userlist}
+		users := GetUsersResponse{Count: len(validuser), Items: validuser}
 		writeJSON(w,http.StatusOK,users)
 	}
 
 }
+
+
+func InvalidUserHandler(invaliduser []loader.User) http.HandlerFunc{
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method!=http.MethodGet{
+			w.Header().Set("Allow", http.MethodGet)
+			http.Error(w,"method not allowed", http.StatusMethodNotAllowed)
+			return 
+		}
+
+		users := GetUsersResponse{Count: len(invaliduser), Items: invaliduser}
+		writeJSON(w,http.StatusOK,users)
+	}
+
+}
+
 
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
