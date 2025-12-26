@@ -16,7 +16,7 @@ func TestLoadCSV(t *testing.T) {
 		},
 	}
 
-	actual_user, err := LoadCSV(path)
+	actual_user, _,err := LoadCSV(path)
 
 	if reflect.DeepEqual(expected_user, actual_user) == false || err != nil {
 		t.Error("sth went wrong", err)
