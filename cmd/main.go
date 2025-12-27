@@ -29,25 +29,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	validuser, invaliduser, err := loader.LoadFile(file)
+	 count, userlist, err := loader.LoadFile(file)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
-	 fmt.Println(invaliduser)
 
 
-	log.Printf("Loaded %d valid users", len(validuser))
-	log.Printf("Skipped %d invalid users", len(invaliduser))
+
+	log.Printf("Loaded %d users", count)
 
 	userhandler := api.UserHandler(file)
-	cacheuserhandler := api.CacheUsersHandler(validuser)
-	invaliduserhandler := api.InvalidUserHandler(invaliduser)
+	cacheuserhandler := api.CacheUsersHandler(userlist)
 
 	http.HandleFunc("/users-nocaching", userhandler)
 	http.HandleFunc("/health", api.HealthHandler)
 	http.HandleFunc("/users", cacheuserhandler)
-	http.HandleFunc("/users/invalid", invaliduserhandler)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 
 	if err != nil {

@@ -27,15 +27,20 @@ func UserHandler(path string) http.HandlerFunc {
 			return
 		}
 
-		itemsloader, _,err := loader.LoadFile(path)
+		countloader, itemsloader, err := loader.LoadFile(path)
 		if err != nil {
 			http.Error(w, "failed to load users", http.StatusInternalServerError)
 			return
 		}
 
-		users := GetUsersResponse{Count: len(itemsloader), Items: itemsloader}
-		writeJSON(w,http.StatusOK,users)
+		users := GetUsersResponse{Count: countloader, Items: itemsloader}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		erro := json.NewEncoder(w).Encode(users)
+		if erro != nil {
+			log.Printf("failed to write response: %v", erro)
 
+		}
 
 	}
 }
@@ -43,7 +48,7 @@ func UserHandler(path string) http.HandlerFunc {
 
 
 
-func CacheUsersHandler(validuser []loader.User) http.HandlerFunc {
+func CacheUsersHandler(userlist []loader.User) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request){
 		if r.Method!=http.MethodGet{
 			w.Header().Set("Allow", http.MethodGet)
@@ -51,27 +56,18 @@ func CacheUsersHandler(validuser []loader.User) http.HandlerFunc {
 			return 
 		}
 
-		users := GetUsersResponse{Count: len(validuser), Items: validuser}
-		writeJSON(w,http.StatusOK,users)
-	}
+		users := GetUsersResponse{Count: len(userlist), Items: userlist}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		err := json.NewEncoder(w).Encode(users)
+		if err != nil {
+			log.Printf("failed to write response: %v", err)
 
-}
-
-
-func InvalidUserHandler(invaliduser []loader.User) http.HandlerFunc{
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method!=http.MethodGet{
-			w.Header().Set("Allow", http.MethodGet)
-			http.Error(w,"method not allowed", http.StatusMethodNotAllowed)
-			return 
 		}
 
-		users := GetUsersResponse{Count: len(invaliduser), Items: invaliduser}
-		writeJSON(w,http.StatusOK,users)
 	}
 
 }
-
 
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -81,18 +77,11 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	health := HealthResponse{Status: "ok"}
-	writeJSON(w,http.StatusOK,health)
-	
-}
-
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	err := json.NewEncoder(w).Encode(v)
+	w.WriteHeader(http.StatusOK)
+	err := json.NewEncoder(w).Encode(health)
 	if err != nil {
 		log.Printf("failed to write response: %v", err)
 	}
-	
-}
 
+}
