@@ -6,6 +6,7 @@ import (
 )
 
 func TestLoadCSV(t *testing.T) {
+	//Will update to use relative paths or create temporary files 
 	path := "/home/mobina-mousavi/Go_project/users.csv"
 	expected_validuser := []User{
 		{

@@ -31,22 +31,19 @@ func LoadJSON(path string) (validuser []User,invaliduser []User, err error) {
 		if userlist[i].ID <= 0{
 			validationerrors = append(validationerrors, *ErrIDInvalid)
 
-		}else if userlist[i].FirstName == ""{
+		}
+		
+		if userlist[i].FirstName == ""{
 			validationerrors = append(validationerrors, *ErrFirstNameEmpty)
 
-		}else if email == ""{
-			validationerrors = append(validationerrors, *ErrEmailInvalid)
-			userlist[i].Email = "no_email"
-			
-
-		}else {
-			_, err := mail.ParseAddress(email)
-			if err != nil{
-				validationerrors = append(validationerrors, *ErrEmailInvalid)
-				userlist[i].Email = "invalid-email"
-			}
-
 		}
+		
+		_, err := mail.ParseAddress(email)
+		if err != nil{
+			validationerrors = append(validationerrors, *ErrEmailInvalid)
+			userlist[i].Email = "invalid-email"
+			}
+		
 
 
 		if len(validationerrors) != 0{
