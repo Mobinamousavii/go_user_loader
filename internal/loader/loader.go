@@ -18,11 +18,11 @@ func LoadFile(path string) ([]User, []User,error) {
 		return users, invaliduser,nil
 
 	} else if strings.HasSuffix(lowerPath, ".json") {
-		users, err := LoadJSON(path)
+		validuser ,invaliduser, err := LoadJSON(path)
 		if err != nil {
 			return nil, nil,err
 		}
-		return users, nil,nil
+		return validuser, invaliduser,nil
 
 	} else {
 		got := filepath.Ext(path)

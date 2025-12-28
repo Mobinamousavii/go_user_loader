@@ -16,8 +16,8 @@ func TestLoadJSON(t *testing.T) {
 		},
 	}
 
-	actual_user, err := LoadJSON(path)
-	if reflect.DeepEqual(expected_user, actual_user) == false || err != nil {
+	validuser,_, err := LoadJSON(path)
+	if reflect.DeepEqual(expected_user, validuser) == false || err != nil {
 		t.Error("sth went wrong", err)
 	}
 

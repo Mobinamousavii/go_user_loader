@@ -54,7 +54,7 @@ func createListCsv(records [][]string) ( validuser []User, invaliduser []User, e
 				if j == 0 {
 					number, err := strconv.Atoi(strings.TrimSpace(field))
 					if err != nil {
-						return nil, nil, err
+						vErrs.IDError = errors.New("id must be int")
 					}
 					if number <= 0 {
 						vErrs.IDError = errors.New("id must be a positive integer")

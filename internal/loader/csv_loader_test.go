@@ -7,7 +7,7 @@ import (
 
 func TestLoadCSV(t *testing.T) {
 	path := "/home/mobina-mousavi/go-practice/GoUserLoader/users.csv"
-	expected_user := []User{
+	expected_validuser := []User{
 		{
 			ID:        1,
 			FirstName: "Ali",
@@ -16,9 +16,24 @@ func TestLoadCSV(t *testing.T) {
 		},
 	}
 
-	actual_user, _,err := LoadCSV(path)
+	expected_invaliduser := []User{
 
-	if reflect.DeepEqual(expected_user, actual_user) == false || err != nil {
+
+		{
+			ID: 2,
+			FirstName: "Amir",
+			LastName: "Mousavi",
+			Email: "no-email",
+		},
+
+	}
+
+	validuser, invaliduser,err := LoadCSV(path)
+
+	if reflect.DeepEqual(expected_validuser, validuser) == false ||
+	reflect.DeepEqual(expected_invaliduser,invaliduser) == false||
+	err != nil {
+
 		t.Error("sth went wrong", err)
 
 	}
