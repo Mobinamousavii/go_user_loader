@@ -2,7 +2,6 @@ package loader
 
 import (
 	"encoding/json"
-	"errors"
 	"net/mail"
 	"os"
 	"strings"
@@ -17,13 +16,6 @@ func LoadJSON(path string) (validuser []User,invaliduser []User, err error) {
 	}
 
 
-	type ValidationErrors struct{
-		IDError        error
-		EmailError     error
-		FirstNameError error
-	}
-	
-	var vErrs ValidationErrors
 	var userlist []User
 
 	err = json.Unmarshal(data, &userlist)
@@ -34,36 +26,34 @@ func LoadJSON(path string) (validuser []User,invaliduser []User, err error) {
 
 	
 	for i := range userlist{
+		var validationerrors []ValidationError
 		email := strings.TrimSpace(userlist[i].Email)
 		if userlist[i].ID <= 0{
-			vErrs.IDError = errors.New("id must be a positive integer")
+			validationerrors = append(validationerrors, *ErrIDInvalid)
 
 		}else if userlist[i].FirstName == ""{
-			vErrs.FirstNameError = errors.New("firstname is empty")
+			validationerrors = append(validationerrors, *ErrFirstNameEmpty)
 
 		}else if email == ""{
-			vErrs.EmailError = errors.New("email is empty")
+			validationerrors = append(validationerrors, *ErrEmailInvalid)
 			userlist[i].Email = "no_email"
 			
 
-		}else if vErrs.EmailError == nil{
-			_,err := mail.ParseAddress(email)
-			if err!=nil{
-				vErrs.EmailError = errors.New("invalid email")
+		}else {
+			_, err := mail.ParseAddress(email)
+			if err != nil{
+				validationerrors = append(validationerrors, *ErrEmailInvalid)
 				userlist[i].Email = "invalid-email"
-				
 			}
 
 		}
 
 
-		if vErrs.IDError != nil ||
-			vErrs.FirstNameError != nil ||
-			vErrs.EmailError != nil {
-				invaliduser = append(invaliduser,userlist[i])
-			}else{
-				validuser = append(validuser, userlist[i])
-			}
+		if len(validationerrors) != 0{
+			invaliduser = append(invaliduser, userlist[i])
+		}else{
+			validuser = append(validuser, userlist[i])
+		}
 	}
 
 	return validuser, invaliduser,nil

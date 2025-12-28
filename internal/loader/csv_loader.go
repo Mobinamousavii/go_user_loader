@@ -40,14 +40,9 @@ func createListCsv(records [][]string) ( validuser []User, invaliduser []User, e
 
 	validuser = make([]User, 0, len(records)-1)
 
-	type ValidationErrors struct{
-		IDError        error
-		EmailError     error
-		FirstNameError error
-	}
 	
 	for i, line := range records {
-		var vErrs ValidationErrors
+		var validationerrors []ValidationError
 		var rec User
 		if i > 0 {
 			for j, field := range line {
@@ -57,12 +52,12 @@ func createListCsv(records [][]string) ( validuser []User, invaliduser []User, e
 						return nil, nil, err
 					}
 					if number <= 0 {
-						vErrs.IDError = errors.New("id must be a positive integer")
+						validationerrors = append(validationerrors, *ErrEmailInvalid)
 					}
 					rec.ID = number
 				} else if j == 1 {
 					if field == ""{
-						vErrs.FirstNameError = errors.New("firstname is empty")
+						validationerrors = append(validationerrors, *ErrFirstNameEmpty)
 
 					}
 					rec.FirstName = field
@@ -72,29 +67,26 @@ func createListCsv(records [][]string) ( validuser []User, invaliduser []User, e
 					email := strings.TrimSpace(field)
 					rec.Email = email
 					if email == ""{
-						vErrs.EmailError = errors.New("email is empty")
+						validationerrors = append(validationerrors, *ErrEmailInvalid)
 						rec.Email = "no-email"
-					}
-
-					if vErrs.EmailError == nil{
+					} else {
 						_, err := mail.ParseAddress(email)
-						if err!= nil{
-							vErrs.EmailError = errors.New("invalid email")
+						if err!=nil{
+							validationerrors = append(validationerrors, *ErrEmailInvalid)
 							rec.Email = "invalid-email"
+
 						}
 					}
 
 				}
 			}
 
-			if vErrs.IDError != nil ||
-				vErrs.FirstNameError != nil ||
-				vErrs.EmailError != nil{
-					invaliduser = append(invaliduser, rec)
-					
-				}else {
-					validuser = append(validuser, rec)
-				}
+			if len(validationerrors) != 0{
+				invaliduser = append(invaliduser, rec)
+
+			}else{
+				validuser = append(validuser, rec)
+			}
 			
 		}
 	}
