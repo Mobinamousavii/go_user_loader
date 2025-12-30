@@ -6,98 +6,57 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"net/mail"
+	"fmt"
 )
 
-func createListCsv(records [][]string) ( validuser []User, invaliduser []User, err error) {
-	var emptyFile = errors.New("file is empty and missing header")
+
+
+func createListCsv(records [][]string)( []User,  error){
 	if len(records) == 0 {
-		return nil, nil, emptyFile
+		return nil, errors.New("file is empty and missing header")
 	}
 
-	
-	var invalidHeaderCount = errors.New("invalid header: expected 4 columns")
 	if len(records[0]) != 4 {
-		return nil, nil, invalidHeaderCount
+		return nil, errors.New("invalid header: expected 4 columns")
 	}
 	
-	var invalidHeaderName = errors.New("invalid header column name")
 	expected := [4]string{"id", "first_name", "last_name", "email"}
 	for i := range expected {
 		if records[0][i] != expected[i] {
-			return nil, nil, invalidHeaderName
+			return nil, errors.New("invalid header column name")
 		}
 	}
 	
-	var invalidColumnsCount = errors.New("invalid record: expected 4 columns")
-	for i := range records[1:] {
-		if len(records[i]) != 4 {
-			return nil, nil, invalidColumnsCount
+
+	userlist := make([]User, 0)
+
+	for row, record:= range records[1:]{
+
+		id, err := strconv.Atoi(strings.TrimSpace(record[0]))
+		if err != nil {
+			return nil, fmt.Errorf("invalid id at csv row %d: %w", row, err)
 		}
+
+		user := User{
+			ID: id,
+			FirstName: record[1],
+			LastName: record[2],
+			Email: record[3],
+		} 
+
+		userlist = append(userlist, user)
 	}
 
-	invaliduser = make([]User,0)
+	return userlist, nil
 
-	validuser = make([]User, 0, len(records)-1)
 
-	
-	for i, line := range records {
-		var validationerrors []ValidationError
-		var rec User
-		if i > 0 {
-			for j, field := range line {
-				if j == 0 {
-					number, err := strconv.Atoi(strings.TrimSpace(field))
-					if err != nil {
-						return nil, nil, err
-					}
-					if number <= 0 {
-						validationerrors = append(validationerrors, *ErrEmailInvalid)
-					}
-					rec.ID = number
-				} else if j == 1 {
-					if field == ""{
-						validationerrors = append(validationerrors, *ErrFirstNameEmpty)
-
-					}
-					rec.FirstName = field
-				} else if j == 2 {
-					rec.LastName = field
-				} else if j == 3 {
-					email := strings.TrimSpace(field)
-					rec.Email = email
-					if email == ""{
-						validationerrors = append(validationerrors, *ErrEmailInvalid)
-						rec.Email = "no-email"
-					} else {
-						_, err := mail.ParseAddress(email)
-						if err!=nil{
-							validationerrors = append(validationerrors, *ErrEmailInvalid)
-							rec.Email = "invalid-email"
-
-						}
-					}
-
-				}
-			}
-
-			if len(validationerrors) != 0{
-				invaliduser = append(invaliduser, rec)
-
-			}else{
-				validuser = append(validuser, rec)
-			}
-			
-		}
-	}
-	return validuser, invaliduser, nil
 }
 
-func LoadCSV(path string) ([]User, []User,error) {
+func LoadCSV(path string) ([]User, error) {
 	f, err := os.Open(path)
 
 	if err != nil {
-		return nil, nil, err
+		return nil,fmt.Errorf("cannot open file %q: %w", path, err)
 	}
 
 	defer f.Close()
@@ -106,15 +65,15 @@ func LoadCSV(path string) ([]User, []User,error) {
 	records, err := filereader.ReadAll()
 
 	if err != nil {
-		return nil, nil, err
+		return nil, fmt.Errorf("cannot read CSV file %q: %w", path, err)
 
 	}
 
-	validuser, invaliduser, err := createListCsv(records)
+	userlist, err := createListCsv(records)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return validuser, invaliduser, nil
+	return userlist, nil
 }

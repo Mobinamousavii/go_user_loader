@@ -8,7 +8,7 @@ import (
 func TestLoadCSV(t *testing.T) {
 	//Will update to use relative paths or create temporary files 
 	path := "/home/mobina-mousavi/Go_project/users.csv"
-	expected_validuser := []User{
+	expected_userlist := []User{
 		{
 			ID:        1,
 			FirstName: "Ali",
@@ -17,29 +17,18 @@ func TestLoadCSV(t *testing.T) {
 		},
 	}
 
-	expected_invaliduser := []User{
 
-		{
-			ID: 2,
-			FirstName: "Amir",
-			LastName: "Mousavi",
-			Email: "no-email",
-		},
 
-	}
-
-	validuser, invaliduser,err := LoadCSV(path)
+	userlist,err := LoadCSV(path)
 
 	if err != nil {
 		t.Errorf("Failed to load CSV: %v", err)
 		return
 	}
 
-	if !reflect.DeepEqual(expected_validuser, validuser) {
-		t.Errorf("Expected valid users: %+v,  got: %+v", expected_validuser, validuser)
+	if !reflect.DeepEqual(expected_userlist, userlist) {
+		t.Errorf("Expected userlist: %+v,  got: %+v", expected_userlist, userlist)
 	}
 
-	if !reflect.DeepEqual(expected_invaliduser, invaliduser) {
-		t.Errorf("Expected invalid users: %+v,  got: %+v", expected_invaliduser, invaliduser)
-	}
+
 }

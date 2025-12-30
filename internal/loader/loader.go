@@ -6,28 +6,28 @@ import (
 	"strings"
 )
 
-func LoadFile(path string) ([]User, []User,error) {
+func LoadFile(path string) ([]User, error) {
 
 	lowerPath := strings.ToLower(path)
 
 	if strings.HasSuffix(lowerPath, ".csv") {
-		users, invaliduser,err := LoadCSV(path)
+		userlist,err := LoadCSV(path)
 		if err != nil {
-			return nil, nil,err
+			return nil,err
 		}
-		return users, invaliduser,nil
+		return userlist, nil
 
 	} else if strings.HasSuffix(lowerPath, ".json") {
-		validuser ,invaliduser, err := LoadJSON(path)
+		userlist, err := LoadJSON(path)
 		if err != nil {
-			return nil, nil,err
+			return nil, err
 		}
-		return validuser, invaliduser,nil
+		return userlist, nil
 
 	} else {
 		got := filepath.Ext(path)
 		err := fmt.Errorf("unsupported file extension for %q: got %q, expected .csv or .json", path, got)
-		return nil, nil,err
+		return nil,err
 	}
 
 }
