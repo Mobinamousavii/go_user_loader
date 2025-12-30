@@ -13,6 +13,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app ./cmd/main.go
 FROM alpine:3.19
 WORKDIR /app
 
-COPY --from=builder /app/app ./app
-ENTRYPOINT ["./app"]
+COPY --from=builder ./app .
+ENTRYPOINT ["./app", "--file", "users.csv"]
 
