@@ -5,22 +5,29 @@ import (
 	"goproject/internal/api"
 	"goproject/internal/config"
 	"goproject/internal/loader"
+	"goproject/internal/service"
 	"log"
 	"net/http"
 )
 
-func Run(args []string) error{
-	cfg , err := config.Parse(args)
+func Run(args []string) error {
+	cfg, err := config.Parse(args)
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
-	validuser, invaliduser, err := loader.LoadFile(cfg.Filepath)
+	userlist, err := loader.LoadFile(cfg.Filepath)
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
+
+	validuser := service.SetValidUsers(userlist)
+
+	invaliduser := service.SetInvalidUsers(userlist)
+
+	fmt.Println(invaliduser)
 
 	log.Printf("Loaded %d valid users", len(validuser))
 	log.Printf("Skipped %d invalid users", len(invaliduser))
@@ -37,13 +44,9 @@ func Run(args []string) error{
 	addr := fmt.Sprintf(":%d", cfg.Port)
 
 	httpServer := &http.Server{
-		Addr: addr,
+		Addr:    addr,
 		Handler: http.DefaultServeMux,
 	}
 
-	return  httpServer.ListenAndServe()
+	return httpServer.ListenAndServe()
 }
-
-
-
-
