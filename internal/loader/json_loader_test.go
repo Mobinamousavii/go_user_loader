@@ -17,9 +17,7 @@ func TestLoadJSON(t *testing.T) {
 		},
 	}
 
-
-
-	userlist,err := LoadJSON(path)
+	userlist, err := LoadJSON(path)
 
 	if err != nil {
 		t.Errorf("Failed to load CSV: %v", err)
@@ -30,9 +28,4 @@ func TestLoadJSON(t *testing.T) {
 		t.Errorf("Expected userlist: %+v,  got: %+v", expected_userlist, userlist)
 	}
 
-
-	}
-
-
-
-
+}
