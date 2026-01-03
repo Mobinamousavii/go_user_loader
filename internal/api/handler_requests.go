@@ -2,70 +2,37 @@ package api
 
 import (
 	"encoding/json"
-	"goproject/internal/loader"
+	"goproject/internal/service"
 	"log"
 	"net/http"
 )
 
 type GetUsersResponse struct {
-	Count int           `json:"count"`
-	Items []loader.User `json:"items"`
+	Count int            `json:"count"`
+	Items []service.User `json:"items"`
 }
 
 type HealthResponse struct {
 	Status string `json:"status"`
 }
 
-func UserHandler(path string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		if r.Method != http.MethodGet {
-			w.Header().Set("Allow", http.MethodGet)
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		userlist, err := loader.LoadFile(path)
-		if err != nil {
-			http.Error(w, "failed to load users", http.StatusInternalServerError)
-			return
-		}
-
-		users := GetUsersResponse{Count: len(userlist), Items: userlist}
-		writeJSON(w, http.StatusOK, users)
-
-	}
+type Server struct {
+	svc *service.Service
 }
 
-func CacheUsersHandler(validuser []loader.User) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.Header().Set("Allow", http.MethodGet)
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		users := GetUsersResponse{Count: len(validuser), Items: validuser}
-		writeJSON(w, http.StatusOK, users)
-	}
-
+func New(svc *service.Service) *Server {
+	return &Server{svc: svc}
 }
 
-func InvalidUserHandler(invaliduser []loader.User) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.Header().Set("Allow", http.MethodGet)
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		users := GetUsersResponse{Count: len(invaliduser), Items: invaliduser}
-		writeJSON(w, http.StatusOK, users)
-	}
-
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", s.handleHealth)
+	mux.HandleFunc("GET /users", s.handleUsers)
+	mux.HandleFunc("GET /users/invalid", s.handleInvalidUsers)
+	return mux
 }
 
-func HealthHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -74,6 +41,37 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 
 	health := HealthResponse{Status: "ok"}
 	writeJSON(w, http.StatusOK, health)
+
+}
+
+func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	items := s.svc.GetValidUsers()
+	validcount := s.svc.ValidCount()
+
+	users := GetUsersResponse{Count: validcount, Items: items}
+	writeJSON(w, http.StatusOK, users)
+
+}
+
+func (s *Server) handleInvalidUsers(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	items := s.svc.GetInvalidUsers()
+	invalidcount := s.svc.InvalidCount()
+
+	users := GetUsersResponse{Count: invalidcount, Items: items}
+	writeJSON(w, http.StatusOK, users)
 
 }
 
