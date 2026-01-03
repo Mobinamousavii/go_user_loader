@@ -18,8 +18,6 @@ func NewService() *Service {
 	return &Service{validUsers: []User{}, invalidUsers: []User{}}
 }
 
-func (s *Service) ValidUsers() []User   { return s.validUsers }
-func (s *Service) InvalidUsers() []User { return s.invalidUsers }
 
 type SetUsersStrategy interface {
 	Parse(records [][]string) ([]User, error)
