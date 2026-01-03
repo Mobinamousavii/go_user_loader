@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"goproject/internal/service"
 	"reflect"
 	"testing"
 )
@@ -8,7 +9,7 @@ import (
 func TestLoadCSV(t *testing.T) {
 	//Will update to use relative paths or create temporary files
 	path := "/home/mobina-mousavi/Go_project/users.csv"
-	expected_userlist := []User{
+	expected_userlist := []service.User{
 		{
 			ID:        1,
 			FirstName: "Ali",

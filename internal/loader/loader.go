@@ -6,23 +6,23 @@ import (
 	"strings"
 )
 
-func LoadFile(path string) ([]User, error) {
+func LoadFile(path string) ([][]string, error) {
 
 	lowerPath := strings.ToLower(path)
 
 	if strings.HasSuffix(lowerPath, ".csv") {
-		userlist, err := LoadCSV(path)
+		records, err := LoadCSV(path)
 		if err != nil {
 			return nil, err
 		}
-		return userlist, nil
+		return records, nil
 
 	} else if strings.HasSuffix(lowerPath, ".json") {
-		userlist, err := LoadJSON(path)
+		records, err := LoadJSON(path)
 		if err != nil {
 			return nil, err
 		}
-		return userlist, nil
+		return records, nil
 
 	} else {
 		got := filepath.Ext(path)

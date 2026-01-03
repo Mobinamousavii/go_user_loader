@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"goproject/internal/service"
 	"reflect"
 	"testing"
 )
@@ -8,7 +9,7 @@ import (
 func TestLoadJSON(t *testing.T) {
 	//Will update to use relative paths or create temporary files in the future
 	path := "/home/mobina-mousavi/Go_project/users.json"
-	expected_userlist := []User{
+	expected_userlist := []service.User{
 		{
 			ID:        1,
 			FirstName: "Ali",
