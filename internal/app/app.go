@@ -17,35 +17,26 @@ func Run(args []string) error {
 		return err
 	}
 
-	userlist, err := loader.LoadFile(cfg.Filepath)
+	records, err := loader.LoadFile(cfg.Filepath)
 
 	if err != nil {
 		return err
 	}
 
-	validuser := service.SetValidUsers(userlist)
+	svc := service.NewService()
+	if err := svc.SetUsers(records); err != nil {
+		return err
+	}
 
-	invaliduser := service.SetInvalidUsers(userlist)
+	log.Printf("Loaded %d valid users", svc.ValidCount())
+	log.Printf("Skipped %d invalid users", svc.InvalidCount())
 
-	fmt.Println(invaliduser)
-
-	log.Printf("Loaded %d valid users", len(validuser))
-	log.Printf("Skipped %d invalid users", len(invaliduser))
-
-	userhandler := api.UserHandler(cfg.Filepath)
-	cacheuserhandler := api.CacheUsersHandler(validuser)
-	invaliduserhandler := api.InvalidUserHandler(invaliduser)
-
-	http.HandleFunc("/users-nocaching", userhandler)
-	http.HandleFunc("/health", api.HealthHandler)
-	http.HandleFunc("/users", cacheuserhandler)
-	http.HandleFunc("/users/invalid", invaliduserhandler)
-
+	srv := api.New(svc)
 	addr := fmt.Sprintf(":%d", cfg.Port)
 
 	httpServer := &http.Server{
 		Addr:    addr,
-		Handler: http.DefaultServeMux,
+		Handler: srv.Handler(),
 	}
 
 	return httpServer.ListenAndServe()
