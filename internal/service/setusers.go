@@ -20,7 +20,7 @@ func NewService() *Service {
 
 
 type SetUsersStrategy interface {
-	Parse(records [][]string) ([]User, error)
+	Parse(record []string, row int) (User, error)
 }
 
 func DetectStrategy(records [][]string) SetUsersStrategy {
@@ -33,7 +33,7 @@ func DetectStrategy(records [][]string) SetUsersStrategy {
 
 }
 
-func (s *Service) SetUsers(records [][]string) error {
+func (s *Service) SetUsers(records [][]string, workers int) error {
 
 	if len(records) == 0 {
 		s.validUsers = []User{}
@@ -43,33 +43,35 @@ func (s *Service) SetUsers(records [][]string) error {
 
 	strategy := DetectStrategy(records)
 
-	users, err := strategy.Parse(records)
+	data := records
+    if err := isCSVHeader(records); err == nil {
+        data = records[1:] 
+    }
 
-	if err != nil {
+	results , err := RunPool(data, workers, strategy)
+	if err!=nil{
 		return err
 	}
 
 	var validUsers []User
 	var invalidUsers []User
 
-	for _, u := range users {
-		errs := ValidateUser(u)
+	for _, result := range results{
+		if result.ParseErr!=nil{
+			return fmt.Errorf("error parsing record %d: %w", result.Index, result.ParseErr)
+		}else if len(result.ValidationErrs) > 0 {
+			if hasEmailError(result.ValidationErrs) {
+            result.User.Email = "invalid-email"
+        }
+			invalidUsers = append(invalidUsers, result.User)
 
-		if len(errs) == 0 {
-			validUsers = append(validUsers, u)
-			continue
+		}else{
+			validUsers = append(validUsers, result.User)
 		}
-
-		if hasEmailError(errs) {
-			u.Email = "invalid-email"
-		}
-
-		invalidUsers = append(invalidUsers, u)
 	}
 
 	s.validUsers = validUsers
 	s.invalidUsers = invalidUsers
-
 	return nil
 }
 
@@ -97,84 +99,71 @@ type CSVStrategy struct{}
 
 type JSONStrategy struct{}
 
-func (CSVStrategy) Parse(records [][]string) ([]User, error) {
-	var userlist []User
-
-	for row, record := range records[1:] {
-
+func (CSVStrategy) Parse(record []string, row int) (User, error) {
 		if len(record) != 4 {
-			return nil, fmt.Errorf("invalid csv row %d: expected 4 columns, got %d", row+2, len(record))
+			return User{}, fmt.Errorf("invalid csv row %d: expected 4 columns, got %d", row+2, len(record))
 		}
 
-		id, err := strconv.Atoi(strings.TrimSpace(record[0]))
+		idStr := strings.TrimSpace(record[0])
+		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			return nil, fmt.Errorf("invalid id at csv row %d: %w", row+2, err)
+			return User{}, fmt.Errorf("invalid id at csv row %d: %w", row+2, err)
 		}
 
-		user := User{
-			ID:        id,
-			FirstName: strings.TrimSpace(record[1]),
-			LastName:  strings.TrimSpace(record[2]),
-			Email:     strings.TrimSpace(record[3]),
-		}
-
-		userlist = append(userlist, user)
-	}
-	return userlist, nil
+	
+		return User{
+		ID:        id,
+		FirstName: strings.TrimSpace(record[1]),
+		LastName:  strings.TrimSpace(record[2]),
+		Email:     strings.TrimSpace(record[3]),
+		}, nil
 }
 
-func (JSONStrategy) Parse(records [][]string) ([]User, error) {
-	var userlist []User
+func (JSONStrategy) Parse(record []string, row int) (User, error) {
 
-	for row, record := range records {
 		if len(record) != 1 {
-			return nil, fmt.Errorf("json: row %d must have exactly 1 column (raw object), got %d", row+1, len(record))
+			return User{}, fmt.Errorf("json: row %d must have exactly 1 column (raw object), got %d", row+1, len(record))
 		}
 
 		raw := strings.TrimSpace(record[0])
 		if raw == "" {
-			return nil, fmt.Errorf("json: empty object at row %d", row+1)
+			return User{}, fmt.Errorf("json: empty object at row %d", row+1)
 		}
 
 		var obj map[string]any
 
 		if err := json.Unmarshal([]byte(raw), &obj); err != nil {
-			return nil, fmt.Errorf("invalid json at row %d: %w", row+1, err)
+			return User{}, fmt.Errorf("invalid json at row %d: %w", row+1, err)
 		}
 
 		if _, ok := obj["id"]; !ok {
-			return nil, fmt.Errorf("json row %d: missing key 'id'", row+1)
+			return User{}, fmt.Errorf("json row %d: missing key 'id'", row+1)
 		}
 		if _, ok := obj["first_name"]; !ok {
-			return nil, fmt.Errorf("json row %d: missing key 'first_name'", row+1)
+			return User{}, fmt.Errorf("json row %d: missing key 'first_name'", row+1)
 		}
 		if _, ok := obj["last_name"]; !ok {
-			return nil, fmt.Errorf("json row %d: missing key 'last_name'", row+1)
+			return User{}, fmt.Errorf("json row %d: missing key 'last_name'", row+1)
 		}
 		if _, ok := obj["email"]; !ok {
-			return nil, fmt.Errorf("json row %d: missing key 'email'", row+1)
+			return User{}, fmt.Errorf("json row %d: missing key 'email'", row+1)
 		}
 
 		id, err := strconv.Atoi(strings.TrimSpace(fmt.Sprint(obj["id"])))
 		if err != nil {
-			return nil, fmt.Errorf("json row %d: invalid id: %w", row+1, err)
+			return User{}, fmt.Errorf("json row %d: invalid id: %w", row+1, err)
 		}
 
 		first := fmt.Sprint(obj["first_name"])
 		last := fmt.Sprint(obj["last_name"])
 		email := fmt.Sprint(obj["email"])
 
-		user := User{
-			ID:        id,
-			FirstName: strings.TrimSpace(first),
-			LastName:  strings.TrimSpace(last),
-			Email:     strings.TrimSpace(email),
-		}
-
-		userlist = append(userlist, user)
-
-	}
-	return userlist, nil
+		return User{
+				ID:        id,
+				FirstName: strings.TrimSpace(first),
+				LastName:  strings.TrimSpace(last),
+				Email:     strings.TrimSpace(email),
+			}, nil
 }
 
 func isCSVHeader(records [][]string) error {
