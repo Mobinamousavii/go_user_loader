@@ -24,10 +24,12 @@ func Run(args []string) error {
 	}
 
 	svc := service.NewService()
-	if err := svc.SetUsers(records); err != nil {
+	
+	if err := svc.SetUsers(records, cfg.Workers); err != nil {
 		return err
 	}
 
+	log.Printf("Starting processing with %d workers", cfg.Workers)
 	log.Printf("Loaded %d valid users", svc.ValidCount())
 	log.Printf("Skipped %d invalid users", svc.InvalidCount())
 
