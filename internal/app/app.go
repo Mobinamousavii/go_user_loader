@@ -17,19 +17,19 @@ func Run(args []string) error {
 		return err
 	}
 
-	records, err := loader.LoadFile(cfg.Filepath)
-
-	if err != nil {
-		return err
-	}
-
 	svc := service.NewService()
-	
-	if err := svc.SetUsers(records, cfg.Workers); err != nil {
+	log.Printf("Starting processing with %d workers", cfg.Workers)
+
+	records, errCh := loader.LoadFile(cfg.Filepath)
+
+	if err := svc.ProcessStream(records, cfg.Workers); err != nil {
 		return err
 	}
 
-	log.Printf("Starting processing with %d workers", cfg.Workers)
+	if err := <-errCh; err != nil {
+		return err
+	}
+
 	log.Printf("Loaded %d valid users", svc.ValidCount())
 	log.Printf("Skipped %d invalid users", svc.InvalidCount())
 
