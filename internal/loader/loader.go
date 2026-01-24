@@ -6,28 +6,33 @@ import (
 	"strings"
 )
 
-func LoadFile(path string) ([][]string, error) {
 
-	lowerPath := strings.ToLower(path)
+type Record struct{
+	Index int
+	Fields []string
+}
 
-	if strings.HasSuffix(lowerPath, ".csv") {
-		records, err := LoadCSV(path)
-		if err != nil {
-			return nil, err
+
+func LoadFile(path string) (<- chan Record, <- chan error) {
+	records := make(chan Record)
+	errCh:= make (chan error, 1)
+
+	go func(){
+		defer close(records)
+		defer close(errCh)
+
+		ext := strings.ToLower(filepath.Ext(path))
+
+		switch ext{
+		case ".csv":
+			LoadCSV(path, records, errCh)
+		case ".json":
+			LoadJSON(path, records, errCh)
+		default:
+			errCh <- fmt.Errorf("unsupported file type: %q (only .csv or .json)", ext)
 		}
-		return records, nil
+	}()
 
-	} else if strings.HasSuffix(lowerPath, ".json") {
-		records, err := LoadJSON(path)
-		if err != nil {
-			return nil, err
-		}
-		return records, nil
-
-	} else {
-		got := filepath.Ext(path)
-		err := fmt.Errorf("unsupported file extension for %q: got %q, expected .csv or .json", path, got)
-		return nil, err
-	}
+	return records, errCh
 
 }

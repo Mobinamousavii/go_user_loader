@@ -2,29 +2,37 @@ package loader
 
 import (
 	"encoding/csv"
-	// "errors"
+	"io"
 	"fmt"
 	"os"
-	// "strconv"
-	// "strings"
+
 )
 
-func LoadCSV(path string) ([][]string, error) {
+func LoadCSV(path string , out chan <- Record, errCh chan <- error){
 	f, err := os.Open(path)
 
 	if err != nil {
-		return nil, fmt.Errorf("cannot open file %q: %w", path, err)
+		errCh <- fmt.Errorf("cannot open file %q: %w", path, err)
+		return
 	}
 
 	defer f.Close()
 
 	filereader := csv.NewReader(f)
-	records, err := filereader.ReadAll()
 
-	if err != nil {
-		return nil, fmt.Errorf("cannot read CSV file %q: %w", path, err)
+	idx := 0
+	for{
+		rec, err := filereader.Read()
+		if err == io.EOF{
+			return
+		}
+		if err!= nil{
+			errCh <- fmt.Errorf("cannot read CSV file %q: %w", path, err)
+			return
+		}
+
+		out <- Record{Index: idx, Fields: rec}
+		idx++
 
 	}
-
-	return records, nil
 }
