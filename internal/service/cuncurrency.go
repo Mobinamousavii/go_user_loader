@@ -4,12 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"goproject/internal/loader"
 	"goproject/internal/validation"
 	"strconv"
 	"strings"
+	"sync"
+
 )
 
 type Service struct {
+	mu sync.RWMutex
 	validUsers   []User
 	invalidUsers []User
 }
@@ -22,67 +26,157 @@ type SetUsersStrategy interface {
 	Parse(record []string, row int) (User, error)
 }
 
-func DetectStrategy(records [][]string) SetUsersStrategy {
+func DetectStrategy(rec []string) SetUsersStrategy {
 
-	if err := isCSVHeader(records); err != nil {
+	if err := isCSVHeader(rec); err != nil {
 		return JSONStrategy{}
 	}
 
 	return CSVStrategy{}
-
 }
 
-func (s *Service) SetUsers(records [][]string, workers int) error {
 
-	if len(records) == 0 {
-		s.validUsers = []User{}
-		s.invalidUsers = []User{}
-		return nil
-	}
+type job struct{
+	Seq    int 
+	Record []string	
+}
 
-	strategy := DetectStrategy(records)
+type recordResult struct{
+	Seq  		   int
+	User           User
+	ParseErr       error
+	ValidationErrs []*validation.ValidationError
+	IsHeader bool
+}
 
-	data := records
-	if err := isCSVHeader(records); err == nil {
-		data = records[1:]
-	}
+func (s *Service) ProcessStream(records <-chan loader.Record, workers int)error{
+	jobs := make(chan job)
+	results := make(chan recordResult)
+	producerErr := make(chan error, 1)
 
-	results, err := RunPool(data, workers, strategy)
-	if err != nil {
-		return err
-	}
+	
+	first,_ := <- records
+	strategy := DetectStrategy(first.Fields)
 
-	var validUsers []User
-	var invalidUsers []User
+	//producer
+	go func (){
+		defer close(jobs)
+		defer close(producerErr)
+		if errs := isCSVHeader(first.Fields); errs == nil{
 
-	for _, result := range results {
-		if result.ParseErr != nil {
-			return fmt.Errorf("error parsing record %d: %w", result.Index, result.ParseErr)
-		} else if len(result.ValidationErrs) > 0 {
-			if hasEmailError(result.ValidationErrs) {
-				result.User.Email = "invalid-email"
+		}else if lookslikeCSVHeader(first.Fields){
+			for range records {
 			}
-			invalidUsers = append(invalidUsers, result.User)
+			producerErr <- fmt.Errorf("invalid csv header: got %v, want %v", first.Fields, []string{"id", "first_name", "last_name", "email"})
+			return
 
-		} else {
-			validUsers = append(validUsers, result.User)
+		}
+
+		jobs <- job{Seq: 0, Record: first.Fields}
+		
+		seq := 1
+		for rec := range records{
+			jobs <- job{Seq: seq, Record: rec.Fields}
+			seq++
+		}
+		
+		}()
+		
+	var wg sync.WaitGroup
+
+	//workers
+	for i:= 0 ;i < workers ; i++{
+		wg.Add(1)
+		
+		go func (strategy SetUsersStrategy) {
+			defer wg.Done()
+			for job := range jobs{
+				//one_way to solve it 
+				if _, ok := strategy.(CSVStrategy); ok && job.Seq ==0 {
+					results <- recordResult{Seq: job.Seq, IsHeader: true}
+					continue
+				}
+
+				u, err := strategy.Parse(job.Record, job.Seq)
+			
+				if err != nil {
+					results <- recordResult{Seq: job.Seq, ParseErr: err}
+					continue
+				}
+
+				errs := ValidateUser(u)
+				results <- recordResult{Seq: job.Seq, User: u, ValidationErrs: errs}
+
+			}			
+		}(strategy)
+
+	}
+	//closer
+	go func ()  {
+		wg.Wait()
+		close(results)
+	}()
+
+	//collector
+	pending := make(map[int]recordResult)
+	next := 0
+	valids := make([]User, 0)
+	invalids := make([]User, 0)
+
+	for res := range results{
+		pending[res.Seq] = res
+
+		for {
+			r, ok := pending[next]
+			if !ok{
+				break
+			}
+			if r.IsHeader{
+				next++
+				continue
+			}
+
+			delete(pending, next)
+			if len(r.ValidationErrs) > 0{
+				if hasEmailError(r.ValidationErrs) {
+				r.User.Email = "invalid-email"
+			}
+				invalids = append(invalids, r.User)
+
+			} else {
+				valids = append(valids, r.User)
+			}
+			next++
 		}
 	}
 
-	s.validUsers = validUsers
-	s.invalidUsers = invalidUsers
+	if err := <-producerErr; err != nil {
+		return err
+	}
+
+	s.mu.Lock()
+	s.invalidUsers = invalids
+	s.validUsers = valids
+	s.mu.Unlock()
+
 	return nil
 }
 
 func (s *Service) ValidCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return len(s.validUsers)
 }
 
 func (s *Service) InvalidCount() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return len(s.invalidUsers)
 }
 
 func (s *Service) GetValidUsers(page int, limit int, email string) ([]User, int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	var users []User
 
@@ -114,6 +208,8 @@ func (s *Service) GetValidUsers(page int, limit int, email string) ([]User, int)
 }
 
 func (s *Service) GetInvalidUsers() []User {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	out := make([]User, len(s.invalidUsers))
 	copy(out, s.invalidUsers)
 	return out
@@ -189,22 +285,34 @@ func (JSONStrategy) Parse(record []string, row int) (User, error) {
 	}, nil
 }
 
-func isCSVHeader(records [][]string) error {
-	if len(records) == 0 {
-		return errors.New("file is empty and missing header")
-	}
-
-	if len(records[0]) != 4 {
+func isCSVHeader(rec []string) error {
+	
+	if len(rec) != 4 {
 		return errors.New("invalid header: expected 4 columns")
 	}
 
 	expected := [4]string{"id", "first_name", "last_name", "email"}
 	for i := range expected {
-		if records[0][i] != expected[i] {
+		if rec[i] != expected[i] {
 			return errors.New("invalid header column name")
 		}
 	}
 	return nil
+}
+
+
+func lookslikeCSVHeader(rec []string)bool{
+	if len(rec) != 4 {
+		return false
+	}
+
+	for _, v := range rec{
+		v = strings.TrimSpace(strings.ToLower(v))
+		if v == "id" || v == "first_name" || v == "last_name" || v == "email" {
+			return true
+		}
+	}
+	return false
 }
 
 func ValidateUser(u User) (errs []*validation.ValidationError) {
