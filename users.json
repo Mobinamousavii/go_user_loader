@@ -3,12 +3,5 @@
 "first_name": "Ali",
 "last_name": "Ahmadi",
 "email": "ali@example.com"
-},
-{
-    "id" : -5,
-    "first_name":"farnaz",
-    "last_name":"radaie",
-    "email": "hjvv"
 }
-
 ]

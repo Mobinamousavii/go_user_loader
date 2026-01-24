@@ -91,7 +91,6 @@ func (s *Service) ProcessStream(records <-chan loader.Record, workers int)error{
 		go func (strategy SetUsersStrategy) {
 			defer wg.Done()
 			for job := range jobs{
-				//one_way to solve it 
 				if _, ok := strategy.(CSVStrategy); ok && job.Seq ==0 {
 					results <- recordResult{Seq: job.Seq, IsHeader: true}
 					continue
