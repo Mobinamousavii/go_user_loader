@@ -161,6 +161,24 @@ func (s *Service) ProcessStream(records <-chan loader.Record, workers int)error{
 	return nil
 }
 
+func (s *Service)AddUser(user User)[]*validation.ValidationError{
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	errs := ValidateUser(user)
+
+	if s.isDuplicateEmail(user.Email){
+		errs = append(errs, &validation.ValidationError{Field: "email",Message: "email already exists", Code: 1004 })
+	}
+	
+	if errs != nil{
+		return errs
+	}
+
+	s.validUsers = append(s.validUsers, user)
+	return nil
+}
+
 func (s *Service) ValidCount() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -177,31 +195,41 @@ func (s *Service) GetValidUsers(page int, limit int, email string) ([]User, int)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var users []User
+	filtered := make([]User, 0)
+
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
 
 	if email != "" {
 		for _, user := range s.validUsers {
 
 			if user.Email == email {
-				users = append(users, user)
+				filtered = append(filtered, user)
 			}
 		}
 	} else {
-		users = s.validUsers
+		filtered = s.validUsers
 	}
+
+	total := len(filtered)
 
 	start := (page - 1) * limit
 	end := start + limit
 
-	if start >= len(users) {
-		users = []User{}
-	} else if end > len(users) {
-		users = users[start:]
-	} else {
-		users = users[start:end]
+	if start >= total {
+		return []User{}, total
 	}
 
-	total := len(users)
+	if end > total {
+		end = total
+	}
+
+	users := filtered[start:end]
 
 	return users, total
 }
@@ -334,6 +362,16 @@ func hasEmailError(errs []*validation.ValidationError) bool {
 		if e != nil && e.Code == 1002 {
 			return true
 		}
+	}
+	return false
+}
+
+func (s *Service)isDuplicateEmail(email string)bool{
+	for _, user := range s.validUsers{
+		if user.Email == email{
+			return true
+		}
+
 	}
 	return false
 }
