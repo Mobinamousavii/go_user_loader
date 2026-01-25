@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
 )
 
 type GetUsersResponse struct {
@@ -26,6 +27,10 @@ type HealthResponse struct {
 	Status string `json:"status"`
 }
 
+type ErrorResponse struct{
+	Error string`json:"error"`
+}
+
 type Server struct {
 	svc *service.Service
 }
@@ -36,9 +41,9 @@ func New(svc *service.Service) *Server {
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", s.handleHealth)
-	mux.HandleFunc("GET /users", s.handleUsers)
-	mux.HandleFunc("GET /users/invalid", s.handleInvalidUsers)
+	mux.HandleFunc("/health", s.handleHealth)
+	mux.HandleFunc("/users", s.Users)
+	mux.HandleFunc("/users/invalid", s.handleInvalidUsers)
 	return mux
 }
 
@@ -79,6 +84,43 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (s *Server)Users(w http.ResponseWriter, r *http.Request) {
+	switch r.Method{
+	case http.MethodGet:
+		s.handleUsers(w ,r)
+	case http.MethodPost:
+		s.handleAddUser(w, r)
+
+	default:
+		http.Error(w, "method not allowed" , http.StatusMethodNotAllowed)
+	}
+}
+
+
+func (s *Server)handleAddUser(w http.ResponseWriter, r *http.Request){
+	var user service.User
+
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil{
+		http.Error(w , "invalid json body", http.StatusBadRequest)
+	}
+
+	errs := s.svc.AddUser(user)
+
+	if len(errs) > 0{
+		var resp ErrorResponse
+		for _, e := range errs{
+			resp = ErrorResponse{Error: e.Message}
+		}
+		writeJSON(w, http.StatusBadRequest, resp)
+		return
+	}
+
+	created := HealthResponse{Status: "created"}
+	writeJSON(w, http.StatusCreated, created)
+
+
+}
+
 func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
 
 	page, limit , email , err := getPaginationParams(r)
@@ -87,14 +129,6 @@ func (s *Server) handleUsers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 	
-
-
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	users, total := s.svc.GetValidUsers(page, limit,email)
 
 	response := GetFilteredResponse{
