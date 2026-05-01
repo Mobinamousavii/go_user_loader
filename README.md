@@ -9,6 +9,11 @@ A simple HTTP service written in Go that loads users from CSV or JSON files and 
 - Health check endpoint
 - Proper HTTP status codes and error handling
 
+## Branch Structure
+
+This repository contains several branches, each representing a specific step in the development process.  
+The goal is to show the project’s progression, architectural decisions, refactoring phases, and feature implementations.
+
 ## Requirements
 
 - Go 1.22+
